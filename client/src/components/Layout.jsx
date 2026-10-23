@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import logo from '../pages/logo.png';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Pill, Package, Users, Zap, ShoppingCart, BarChart3, Menu, X, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, Users, Zap, ShoppingCart, BarChart3, Menu, X, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const NAV = [
@@ -22,8 +22,10 @@ export default function Layout({ children }) {
     <div className="app">
       <aside className={`sidebar ${open ? '' : 'collapsed'}`}>
         <div className="sidebar-logo">
-          <div className="icon-box"><Pill size={18} /></div>
-          {open && <span className="logo-text">Farmácia Validade</span>}
+          <svg className="sidebar-brand" viewBox="450 892 1459 613"
+            role="img" aria-label="ValiMed">
+            <image href={logo} width="2500" height="2500" />
+          </svg>
         </div>
 
         <nav style={{ flex: 1, padding: '12px 0' }}>
@@ -57,13 +59,8 @@ export default function Layout({ children }) {
       </aside>
 
       <main className="main">
-        <div className="system-brand">
-    <svg className="system-brand-logo" viewBox="450 892 1459 613"
-      role="img" aria-label="ValiMed">
-      <image href={logo} width="2500" height="2500" />
-    </svg>
-  </div>
-        {children}</main>
+        {children}
+      </main>
     </div>
   );
 }
