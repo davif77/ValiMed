@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import logo from '../pages/logo.png';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Package, Users, Zap, ShoppingCart, BarChart3, Menu, X, LogOut } from 'lucide-react';
+import { LayoutDashboard, Pill, Package, Users, Zap, ShoppingCart, BarChart3, Menu, X, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const NAV = [
