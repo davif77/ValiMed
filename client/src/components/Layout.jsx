@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import logo from '../pages/logo.png';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Pill, Package, Users, Zap, ShoppingCart, BarChart3, Menu, X, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -57,7 +58,7 @@ export default function Layout({ children }) {
 
       <main className="main">
         <div className="system-brand">
-    <img src="/logo.png" alt="ValiMeD" />
+    <img src={logo} alt="ValiMeD" />
   </div>
         {children}</main>
     </div>
