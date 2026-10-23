@@ -85,7 +85,7 @@ body {
 
     overflow-y: auto;
 
-    padding: 84px 28px 28px;
+    padding: 110px 28px 28px;
 
     background: var(--background);
 }
@@ -101,7 +101,7 @@ body {
     right: 0;
     z-index: 50;
 
-    height: 62px;
+    height: 88px;
     padding: 0 28px;
 
     display: flex;
@@ -112,13 +112,15 @@ body {
     transition: left 0.2s ease;
 }
 
-.system-brand img {
+/* O viewBox do SVG elimina as margens transparentes do PNG original. */
+.system-brand-logo {
     display: block;
-    width: 130px;
+    width: 180px;
     max-width: 100%;
-    max-height: 46px;
     height: auto;
-    object-fit: contain;
+    aspect-ratio: 1459 / 613;
+    flex-shrink: 0;
+    overflow: hidden;
 }
 
 /* A faixa acompanha a largura do menu lateral. */
@@ -131,7 +133,7 @@ body {
 ========================================= */
 
 .sidebar-logo {
-    min-height: 62px;
+    min-height: 88px;
 
     display: flex;
     align-items: center;
@@ -810,7 +812,7 @@ tr:hover td {
     }
 
     .main {
-        padding: 84px 20px 22px;
+        padding: 110px 20px 22px;
     }
 
     .system-brand {
@@ -855,7 +857,7 @@ tr:hover td {
         width: calc(100% - 62px);
         height: 100vh;
 
-        padding: 72px 16px 20px;
+        padding: 92px 16px 20px;
     }
 
     .system-brand {
@@ -863,13 +865,16 @@ tr:hover td {
         left: 62px;
         right: 0;
 
-        height: 56px;
+        height: 76px;
         padding: 0 16px;
     }
 
-    .system-brand img {
-        width: 105px;
-        max-height: 40px;
+    .system-brand-logo {
+        width: 150px;
+    }
+
+    .sidebar-logo {
+        min-height: 76px;
     }
 
     .sidebar.collapsed ~ .main .system-brand {

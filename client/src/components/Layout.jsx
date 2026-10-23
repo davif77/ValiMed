@@ -58,7 +58,10 @@ export default function Layout({ children }) {
 
       <main className="main">
         <div className="system-brand">
-    <img src={logo} alt="ValiMeD" />
+    <svg className="system-brand-logo" viewBox="450 892 1459 613"
+      role="img" aria-label="ValiMed">
+      <image href={logo} width="2500" height="2500" />
+    </svg>
   </div>
         {children}</main>
     </div>
