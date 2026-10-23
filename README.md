@@ -30,6 +30,7 @@ farmacia_validade_js/
 │   ├── db.js
 │   ├── index.js
 │   ├── schema.sql
+│   ├── seed.sql
 │   ├── .env.example
 │   └── package.json
 ├── index.html
@@ -55,40 +56,141 @@ A senha não é armazenada no navegador, nem em `localStorage`. A sessão dura o
 
 ### Pré-requisitos
 
-Node.js 18 ou superior, MySQL 8 ou superior e npm.
+- Node.js em versão LTS suportada, npm e Git.
+- MySQL Server 8 ou superior instalado e iniciado.
+- MySQL Workbench para importar os scripts pela interface (opcional).
 
-### 1. Banco de dados
+O Workbench é o cliente de administração: o MySQL Server também precisa estar instalado.
+Cada computador terá seu próprio banco e seu arquivo `server/.env`.
 
-Crie o banco e execute o schema:
+### 1. Baixar o projeto
+
+O repositório é privado. O responsável deve conceder acesso ao orientador antes da clonagem.
 
 ```bash
-mysql -u root -p < server/schema.sql
+git clone https://github.com/davif77/ValiMed.git
+cd ValiMed
 ```
 
-### 2. Backend
+Se o projeto já foi clonado, use `git pull --ff-only` na pasta do projeto.
+Se o Git avisar sobre alterações locais, preserve-as antes de atualizar.
+
+### 2. Criar o banco no MySQL Workbench
+
+1. Conecte ao MySQL local com um usuário autorizado a criar bancos e tabelas.
+2. Em **File → Open SQL Script**, abra `server/schema.sql`.
+3. Execute o arquivo inteiro com **Ctrl + Shift + Enter**.
+4. Confira **Action Output**: não deve haver erros. Atualize o painel **Schemas**.
+5. Para testar com cadastros prontos, abra `server/seed.sql` e execute o arquivo inteiro da mesma forma.
+
+| Arquivo | Finalidade |
+|---|---|
+| `server/schema.sql` | Cria o banco e as cinco tabelas, usando `qtd_caixa` em medicamentos |
+| `server/seed.sql` | Carga opcional com 15 medicamentos, 10 clientes, 45 lotes e 10 vendas fictícias |
+| `server/.env.example` | Modelo para configurar o banco e o login local |
+
+O schema não apaga bancos, tabelas nem registros. Pode ser reexecutado em uma instalação
+com a mesma estrutura, mas **não altera nem migra tabelas antigas**.
+Se um banco anterior usa `principio_ativo` e não possui `qtd_caixa`, importar o schema
+não corrige essa diferença: faça backup e ajuste a estrutura antes de usar a aplicação.
+Para uma instalação nova, use um banco vazio.
+
+O seed usa datas relativas ao dia da primeira execução. Inclui lotes vencidos,
+descartados, próximos do vencimento, com vencimento hoje, validade longa,
+estoque zerado e estoque baixo. As quantidades representam o saldo após as vendas
+demonstrativas; não execute outra baixa de estoque para essas vendas.
+A classificação visual depende das regras da aplicação.
+
+A carga de demonstração é transacional. Se ocorrer erro, suas inserções são revertidas.
+Se já existir qualquer medicamento com código `VALIMED-DEMO-`, a carga inteira é
+ignorada: as vendas não são duplicadas, os estoques não são repostos e as datas não são renovadas.
+Os códigos, CPFs, fabricantes, preços e demais cadastros são fictícios.
+Execute o seed inteiro, sem selecionar apenas trechos. Ele usa um procedimento auxiliar
+e requer a permissão `CREATE ROUTINE`, normalmente disponível ao usuário root local.
+
+Alternativa no terminal do cliente MySQL, iniciando **na raiz do projeto**:
+
+```text
+mysql -u root -p
+SOURCE server/schema.sql;
+SOURCE server/seed.sql;
+EXIT;
+```
+
+Os comandos `SOURCE` são executados dentro do cliente MySQL, não no PowerShell.
+O segundo arquivo é opcional.
+
+### 3. Configurar o backend
+
+Na raiz do projeto:
 
 ```bash
 cd server
 npm install
-cp .env.example .env
-# Edite .env com o banco e as credenciais fornecidas pelo administrador
-npm start
-# Servidor em http://localhost:3001
 ```
 
-Se o arquivo `.env` já existir, altere suas variáveis sem substituí-lo.
+Copie `.env.example` para `.env`. No PowerShell do Windows:
 
-### 3. Frontend
+```powershell
+Copy-Item .env.example .env
+```
 
-Em outro terminal, na raiz do projeto:
+No Linux/macOS:
+
+```bash
+cp .env.example .env
+```
+
+Se o `.env` já existir, edite-o sem substituí-lo.
+Preencha `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` e `DB_NAME`
+com os dados da mesma conexão usada no Workbench.
+O nome padrão do banco é `farmacia_validade`.
+
+Defina `ADMIN_LOGIN`, `ADMIN_PASSWORD` e `AUTH_SECRET`.
+O login do ValiMed é independente do usuário/senha do MySQL e não é criado pelo seed.
+Para gerar uma chave de sessão, execute e copie o resultado para `AUTH_SECRET`:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+O modelo deixa senha e chave vazias de propósito: preencha-as antes de iniciar.
+Não envie o `.env` preenchido ao GitHub. Para desenvolvimento local, mantenha
+`NODE_ENV=development`; `production` exige HTTPS para o cookie de sessão.
+
+Ainda dentro de `server`:
+
+```bash
+npm start
+```
+
+Deixe esse terminal aberto. O backend usa `http://localhost:3001`.
+Ao alterar o `.env`, pare com **Ctrl + C** e execute `npm start` novamente.
+
+### 4. Iniciar o frontend
+
+Abra outro terminal **na raiz do projeto**, onde está o `package.json` principal:
 
 ```bash
 npm install
 npm run dev
-# Aplicação em http://localhost:5173
 ```
 
+Abra o endereço informado pelo Vite, normalmente `http://localhost:5173`.
 O Vite encaminha `/api` para `http://localhost:3001`, conforme `vite.config.js`.
+Entre com o login e a senha definidos no `.env`.
+
+### Problemas comuns
+
+- **Credenciais administrativas não configuradas:** preencha `ADMIN_LOGIN`,
+  `ADMIN_PASSWORD` e `AUTH_SECRET` no `server/.env` e reinicie o backend.
+- **Access denied:** confira usuário e senha do MySQL; são diferentes do login do ValiMed.
+- **Unknown database / tabelas ausentes:** execute `schema.sql` na conexão correta.
+- **Unknown column qtd_caixa:** a tabela existente está desatualizada; o schema não faz migrações.
+- **Login funciona, mas listas estão vazias:** confira `DB_NAME`, host e porta;
+  importe `seed.sql` se quiser dados de demonstração e veja o terminal do backend.
+- **Erro ao importar:** pare a execução e confira o erro em **Action Output**.
+  Não apague o banco existente para tentar corrigir sem antes fazer backup.
 
 ## Variáveis de ambiente do backend
 
