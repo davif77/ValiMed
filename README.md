@@ -2,6 +2,15 @@
 
 Sistema de gestão de farmácia com controle de validade de medicamentos, estoque, clientes e vendas.
 
+## Como rodar o ValiMed para avaliação
+
+1. **Baixe o código** com Git ou pelo menu **Code → Download ZIP**. Veja [como baixar o projeto](#1-baixar-o-projeto).
+2. **Crie o banco**: com o MySQL Server em execução, abra [`server/schema.sql`](server/schema.sql) no Workbench e execute o script inteiro. Ele cria o banco `farmacia_validade` e as cinco tabelas, preservando os dados existentes.
+3. **Carregue dados de demonstração (opcional)**: na mesma conexão, execute [`server/seed.sql`](server/seed.sql) depois do schema. Ele adiciona medicamentos, lotes com diferentes validades, clientes e vendas fictícias.
+4. **Configure e inicie o sistema**: copie [`server/.env.example`](server/.env.example) para `server/.env` e preencha as credenciais locais. Siga as instruções para [iniciar o backend](#3-configurar-o-backend) e [iniciar o frontend](#4-iniciar-o-frontend).
+
+[Passo a passo completo para criar o banco no MySQL Workbench](#2-criar-o-banco-no-mysql-workbench).
+
 ## Stack utilizada
 
 | Camada | Tecnologia |
