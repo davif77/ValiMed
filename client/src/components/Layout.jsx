@@ -49,7 +49,6 @@ export default function Layout({ children }) {
         {open && (
           <div className="sidebar-footer">
             <p className="sidebar-user">{user?.login}</p>
-            <p>Sistema Farmácia · v2.0</p>
             <button className="logout-btn" onClick={logout}>
               <LogOut size={15} />
               Sair da conta
