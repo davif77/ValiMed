@@ -5,9 +5,8 @@ Sistema de gestão de farmácia com controle de validade de medicamentos, estoqu
 ## Como rodar o ValiMed para avaliação
 
 1. **Baixe o código** com Git ou pelo menu **Code → Download ZIP**. Veja [como baixar o projeto](#1-baixar-o-projeto).
-2. **Crie o banco**: com o MySQL Server em execução, abra [`server/schema.sql`](server/schema.sql) no Workbench e execute o script inteiro. Ele cria o banco `farmacia_validade` e as cinco tabelas, preservando os dados existentes.
-3. **Carregue dados de demonstração (opcional)**: na mesma conexão, execute [`server/seed.sql`](server/seed.sql) depois do schema. Ele adiciona medicamentos, lotes com diferentes validades, clientes e vendas fictícias.
-4. **Configure e inicie o sistema**: copie [`server/.env.example`](server/.env.example) para `server/.env` e preencha as credenciais locais. Siga as instruções para [iniciar o backend](#3-configurar-o-backend) e [iniciar o frontend](#4-iniciar-o-frontend).
+2. **Crie o banco e carregue os dados de teste**: com o MySQL Server em execução, abra [`server/schema.sql`](server/schema.sql) no Workbench e execute o arquivo inteiro. Ele cria `farmacia_validade` e inclui medicamentos, lotes, clientes e vendas fictícias.
+3. **Configure e inicie o sistema**: copie [`server/.env.example`](server/.env.example) para `server/.env` e preencha as credenciais locais. Siga as instruções para [iniciar o backend](#3-configurar-o-backend) e [iniciar o frontend](#4-iniciar-o-frontend).
 
 [Passo a passo completo para criar o banco no MySQL Workbench](#2-criar-o-banco-no-mysql-workbench).
 
@@ -39,7 +38,6 @@ farmacia_validade_js/
 │   ├── db.js
 │   ├── index.js
 │   ├── schema.sql
-│   ├── seed.sql
 │   ├── .env.example
 │   └── package.json
 ├── index.html
@@ -90,12 +88,11 @@ Se o Git avisar sobre alterações locais, preserve-as antes de atualizar.
 2. Em **File → Open SQL Script**, abra `server/schema.sql`.
 3. Execute o arquivo inteiro com **Ctrl + Shift + Enter**.
 4. Confira **Action Output**: não deve haver erros. Atualize o painel **Schemas**.
-5. Para testar com cadastros prontos, abra `server/seed.sql` e execute o arquivo inteiro da mesma forma.
+5. Confira as tabelas e os dados de demonstração no banco `farmacia_validade`.
 
 | Arquivo | Finalidade |
 |---|---|
-| `server/schema.sql` | Cria o banco e as cinco tabelas, usando `qtd_caixa` em medicamentos |
-| `server/seed.sql` | Carga opcional com 15 medicamentos, 10 clientes, 45 lotes e 10 vendas fictícias |
+| `server/schema.sql` | Cria o banco e as cinco tabelas e insere 15 medicamentos, 10 clientes, 45 lotes e 10 vendas fictícias |
 | `server/.env.example` | Modelo para configurar o banco e o login local |
 
 O schema não apaga bancos, tabelas nem registros. Pode ser reexecutado em uma instalação
@@ -104,7 +101,7 @@ Se um banco anterior usa `principio_ativo` e não possui `qtd_caixa`, importar o
 não corrige essa diferença: faça backup e ajuste a estrutura antes de usar a aplicação.
 Para uma instalação nova, use um banco vazio.
 
-O seed usa datas relativas ao dia da primeira execução. Inclui lotes vencidos,
+Os dados de demonstração usam datas relativas ao dia da primeira execução. Inclui lotes vencidos,
 descartados, próximos do vencimento, com vencimento hoje, validade longa,
 estoque zerado e estoque baixo. As quantidades representam o saldo após as vendas
 demonstrativas; não execute outra baixa de estoque para essas vendas.
@@ -114,7 +111,7 @@ A carga de demonstração é transacional. Se ocorrer erro, suas inserções sã
 Se já existir qualquer medicamento com código `VALIMED-DEMO-`, a carga inteira é
 ignorada: as vendas não são duplicadas, os estoques não são repostos e as datas não são renovadas.
 Os códigos, CPFs, fabricantes, preços e demais cadastros são fictícios.
-Execute o seed inteiro, sem selecionar apenas trechos. Ele usa um procedimento auxiliar
+Execute o script inteiro, sem selecionar apenas trechos. A carga usa um procedimento auxiliar
 e requer a permissão `CREATE ROUTINE`, normalmente disponível ao usuário root local.
 
 Alternativa no terminal do cliente MySQL, iniciando **na raiz do projeto**:
@@ -122,12 +119,10 @@ Alternativa no terminal do cliente MySQL, iniciando **na raiz do projeto**:
 ```text
 mysql -u root -p
 SOURCE server/schema.sql;
-SOURCE server/seed.sql;
 EXIT;
 ```
 
 Os comandos `SOURCE` são executados dentro do cliente MySQL, não no PowerShell.
-O segundo arquivo é opcional.
 
 ### 3. Configurar o backend
 
@@ -156,7 +151,7 @@ com os dados da mesma conexão usada no Workbench.
 O nome padrão do banco é `farmacia_validade`.
 
 Defina `ADMIN_LOGIN`, `ADMIN_PASSWORD` e `AUTH_SECRET`.
-O login do ValiMed é independente do usuário/senha do MySQL e não é criado pelo seed.
+O login do ValiMed é independente do usuário/senha do MySQL e não é criado pelo script SQL.
 Para gerar uma chave de sessão, execute e copie o resultado para `AUTH_SECRET`:
 
 ```bash
@@ -197,7 +192,7 @@ Entre com o login e a senha definidos no `.env`.
 - **Unknown database / tabelas ausentes:** execute `schema.sql` na conexão correta.
 - **Unknown column qtd_caixa:** a tabela existente está desatualizada; o schema não faz migrações.
 - **Login funciona, mas listas estão vazias:** confira `DB_NAME`, host e porta;
-  importe `seed.sql` se quiser dados de demonstração e veja o terminal do backend.
+  confira se `schema.sql` foi executado por inteiro e veja o terminal do backend.
 - **Erro ao importar:** pare a execução e confira o erro em **Action Output**.
   Não apague o banco existente para tentar corrigir sem antes fazer backup.
 
