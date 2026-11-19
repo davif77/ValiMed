@@ -143,6 +143,57 @@ app.post('/api/medicamentos', async (req, res) => {
   }
 });
 
+app.put('/api/medicamentos/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.status(400).json({ error: 'ID de medicamento inválido.' });
+  }
+
+  const body = req.body || {};
+  const campos = [
+    ['nome_comercial', 100, true],
+    ['cod_barra', 50, true],
+    ['qtd_caixa', 50, false],
+    ['dosagem', 50, false],
+    ['fabricante', 100, false],
+  ];
+  const medicamento = {};
+  for (const [campo, limite, obrigatorio] of campos) {
+    const valor = body[campo];
+    if (valor != null && typeof valor !== 'string') {
+      return res.status(400).json({ error: `O campo ${campo} deve ser um texto.` });
+    }
+    const texto = (valor ?? '').trim();
+    if (obrigatorio && !texto) {
+      return res.status(400).json({ error: 'Nome comercial e código de barras são obrigatórios.' });
+    }
+    if (texto.length > limite) {
+      return res.status(400).json({ error: `O campo ${campo} deve ter no máximo ${limite} caracteres.` });
+    }
+    medicamento[campo] = texto;
+  }
+
+  try {
+    await pool.query(
+      'UPDATE medicamentos SET nome_comercial=?, cod_barra=?, qtd_caixa=?, dosagem=?, fabricante=? WHERE id_medicamento=?',
+      [medicamento.nome_comercial, medicamento.cod_barra, medicamento.qtd_caixa,
+        medicamento.dosagem, medicamento.fabricante, id]
+    );
+    // Consultar também permite salvar sem mudanças e preserva ativo/criado_em.
+    const [[atualizado]] = await pool.query(
+      'SELECT * FROM medicamentos WHERE id_medicamento = ?', [id]
+    );
+    if (!atualizado) return res.status(404).json({ error: 'Medicamento não encontrado.' });
+    return res.json(atualizado);
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ error: 'Este código de barras já está cadastrado.' });
+    }
+    console.error('Erro ao atualizar medicamento:', err.message);
+    return res.status(500).json({ error: 'Erro ao atualizar medicamento.' });
+  }
+});
+
 app.delete('/api/medicamentos/:id', async (req, res) => {
   try {
     const [result] = await pool.query('DELETE FROM medicamentos WHERE id_medicamento = ?', [req.params.id]);

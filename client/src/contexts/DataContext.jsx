@@ -41,6 +41,11 @@ export function DataProvider({ children }) {
   const formatarMedicamento = (m) =>
     [m.nome_comercial, m.dosagem, m.qtd_caixa, m.fabricante].filter(Boolean).join(' · ');
 
+  const atualizarMedicamento = async (id, med) => {
+    const { data } = await axios.put(`${API}/medicamentos/${id}`, med);
+    setMedicamentos(p => p.map(m => m.id_medicamento === id ? { ...m, ...data } : m));
+  };
+
   const deletarMedicamento = async (id) => {
     await axios.delete(`${API}/medicamentos/${id}`);
     setMedicamentos(p => p.filter(m => m.id_medicamento !== id));
@@ -136,7 +141,7 @@ export function DataProvider({ children }) {
   return (
     <Ctx.Provider value={{
       medicamentos, lotes, vendas, clientes, loading, carregarDados,
-      adicionarMedicamento, deletarMedicamento, getMedicamento, getMedicamentoPorCodBarra, formatarMedicamento,
+      adicionarMedicamento, atualizarMedicamento, deletarMedicamento, getMedicamento, getMedicamentoPorCodBarra, formatarMedicamento,
       adicionarLote, atualizarLote, deletarLote, getLotesPorMedicamento, getLotesPorVencer, getLotesVencidos, isLoteVencido,
       adicionarVenda,
       adicionarCliente, atualizarCliente, deletarCliente, getCliente,
