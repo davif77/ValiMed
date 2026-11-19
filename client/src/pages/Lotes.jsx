@@ -69,7 +69,7 @@ export default function Lotes() {
                     <select className="input" required value={form.id_medicamento}
                       onChange={e => setForm({ ...form, id_medicamento: Number(e.target.value) })}>
                       <option value={0}>Selecione...</option>
-                      {data.medicamentos.filter(m => m.ativo).map(m => (
+                      {data.medicamentos.filter(m => m.ativo).sort((a, b) => a.nome_comercial.localeCompare(b.nome_comercial, 'pt-BR', { sensitivity: 'base', numeric: true }) || data.formatarMedicamento(a).localeCompare(data.formatarMedicamento(b), 'pt-BR', { sensitivity: 'base', numeric: true })).map(m => (
                         <option key={m.id_medicamento} value={m.id_medicamento}>{data.formatarMedicamento(m)}</option>
                       ))}
                     </select>
@@ -123,7 +123,7 @@ export default function Lotes() {
           <select className="input" value={filtroMed}
             onChange={e => setFiltroMed(e.target.value === 'todos' ? 'todos' : Number(e.target.value))}>
             <option value="todos">Todos</option>
-            {data.medicamentos.filter(m => m.ativo).map(m => (
+            {data.medicamentos.filter(m => m.ativo).sort((a, b) => a.nome_comercial.localeCompare(b.nome_comercial, 'pt-BR', { sensitivity: 'base', numeric: true }) || data.formatarMedicamento(a).localeCompare(data.formatarMedicamento(b), 'pt-BR', { sensitivity: 'base', numeric: true })).map(m => (
               <option key={m.id_medicamento} value={m.id_medicamento}>{data.formatarMedicamento(m)}</option>
             ))}
           </select>
