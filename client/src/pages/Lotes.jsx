@@ -70,7 +70,7 @@ export default function Lotes() {
                       onChange={e => setForm({ ...form, id_medicamento: Number(e.target.value) })}>
                       <option value={0}>Selecione...</option>
                       {data.medicamentos.filter(m => m.ativo).map(m => (
-                        <option key={m.id_medicamento} value={m.id_medicamento}>{m.nome_comercial}</option>
+                        <option key={m.id_medicamento} value={m.id_medicamento}>{data.formatarMedicamento(m)}</option>
                       ))}
                     </select>
                   </div>
@@ -124,7 +124,7 @@ export default function Lotes() {
             onChange={e => setFiltroMed(e.target.value === 'todos' ? 'todos' : Number(e.target.value))}>
             <option value="todos">Todos</option>
             {data.medicamentos.filter(m => m.ativo).map(m => (
-              <option key={m.id_medicamento} value={m.id_medicamento}>{m.nome_comercial}</option>
+              <option key={m.id_medicamento} value={m.id_medicamento}>{data.formatarMedicamento(m)}</option>
             ))}
           </select>
         </div>
