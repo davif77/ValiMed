@@ -61,8 +61,13 @@ export function DataProvider({ children }) {
   };
 
   const atualizarLote = async (id, lote) => {
-    await axios.put(`${API}/lotes/${id}`, lote);
-    setLotes(p => p.map(l => l.id_lote === id ? { ...l, ...lote } : l));
+    const { data } = await axios.put(`${API}/lotes/${id}`, lote);
+    setLotes(p => p.map(l => l.id_lote === id ? { ...l, ...data } : l));
+  };
+
+  const descartarLote = async (id) => {
+    const { data } = await axios.put(`${API}/lotes/${id}/descartar`);
+    setLotes(p => p.map(l => l.id_lote === id ? { ...l, ...data } : l));
   };
 
   const deletarLote = async (id) => {
@@ -142,7 +147,7 @@ export function DataProvider({ children }) {
     <Ctx.Provider value={{
       medicamentos, lotes, vendas, clientes, loading, carregarDados,
       adicionarMedicamento, atualizarMedicamento, deletarMedicamento, getMedicamento, getMedicamentoPorCodBarra, formatarMedicamento,
-      adicionarLote, atualizarLote, deletarLote, getLotesPorMedicamento, getLotesPorVencer, getLotesVencidos, isLoteVencido,
+      adicionarLote, atualizarLote, descartarLote, deletarLote, getLotesPorMedicamento, getLotesPorVencer, getLotesVencidos, isLoteVencido,
       adicionarVenda,
       adicionarCliente, atualizarCliente, deletarCliente, getCliente,
       totalMedicamentos, totalLotes, totalItensEstoque, valorEstoque, lotesComAlerta,

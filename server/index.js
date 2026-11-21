@@ -291,18 +291,49 @@ app.post('/api/lotes', async (req, res) => {
   }
 });
 
-app.put('/api/lotes/:id', async (req, res) => {
-  const { id_medicamento, numero_lote, data_fabri, data_venci, quantidade, preco_compra, preco_venda, status } = req.body;
+// O descarte mantém o lote e os vínculos com vendas; apenas baixa seu saldo.
+app.put('/api/lotes/:id/descartar', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.status(400).json({ error: 'ID de lote inválido.' });
+  }
   try {
-    const [result] = await pool.query(
-      'UPDATE lotes SET id_medicamento=?, numero_lote=?, data_fabri=?, data_venci=?, quantidade=?, preco_compra=?, preco_venda=?, status=? WHERE id_lote=?',
-      [id_medicamento, numero_lote, data_fabri || null, data_venci, quantidade || 0, preco_compra || 0, preco_venda || 0, status || 'ATIVO', req.params.id]
+    await pool.query(
+      "UPDATE lotes SET quantidade=0, status='DESCARTADO' WHERE id_lote=?", [id]
     );
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Lote não encontrado' });
-    res.json({ message: 'Lote atualizado' });
+    const [[lote]] = await pool.query('SELECT * FROM lotes WHERE id_lote=?', [id]);
+    if (!lote) return res.status(404).json({ error: 'Lote não encontrado.' });
+    return res.json(lote);
   } catch (err) {
-    console.error("🔴 Erro ao atualizar lote:", err.message);
-    res.status(500).json({ error: 'Erro ao atualizar lote' });
+    console.error('Erro ao descartar lote:', err.message);
+    return res.status(500).json({ error: 'Erro ao descartar lote.' });
+  }
+});
+
+app.put('/api/lotes/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.status(400).json({ error: 'ID de lote inválido.' });
+  }
+  const { id_medicamento, numero_lote, data_fabri, data_venci, quantidade, preco_compra, preco_venda, status } = req.body;
+  if (status && !['ATIVO', 'VENCIDO'].includes(status)) {
+    return res.status(400).json({ error: 'Para descartar um lote, utilize a opção Descartar lote.' });
+  }
+  try {
+    // A condição é atômica: um formulário antigo não pode reativar um lote descartado.
+    await pool.query(
+      "UPDATE lotes SET id_medicamento=?, numero_lote=?, data_fabri=?, data_venci=?, quantidade=?, preco_compra=?, preco_venda=?, status=? WHERE id_lote=? AND status<>'DESCARTADO'",
+      [id_medicamento, numero_lote, data_fabri || null, data_venci, quantidade || 0, preco_compra || 0, preco_venda || 0, status || 'ATIVO', id]
+    );
+    const [[lote]] = await pool.query('SELECT * FROM lotes WHERE id_lote=?', [id]);
+    if (!lote) return res.status(404).json({ error: 'Lote não encontrado.' });
+    if (lote.status === 'DESCARTADO') {
+      return res.status(409).json({ error: 'Lotes descartados não podem ser editados ou reativados.' });
+    }
+    return res.json(lote);
+  } catch (err) {
+    console.error('Erro ao atualizar lote:', err.message);
+    return res.status(500).json({ error: 'Erro ao atualizar lote.' });
   }
 });
 

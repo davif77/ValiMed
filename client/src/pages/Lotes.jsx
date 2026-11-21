@@ -1,15 +1,24 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Edit2, AlertCircle, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, AlertCircle, X, PackageX } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 
 const emptyForm = { id_medicamento: 0, numero_lote: '', data_fabri: '', data_venci: '', quantidade: 0, preco_compra: 0, preco_venda: 0 };
 
-function diasParaVencer(d) { return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000); }
-function badge(dias) {
-  if (dias < 0)   return { cls: 'badge badge-red',    txt: 'Vencido' };
-  if (dias <= 7)  return { cls: 'badge badge-red',    txt: 'Crítico' };
-  if (dias <= 30) return { cls: 'badge badge-yellow', txt: 'Aviso' };
-  return              { cls: 'badge badge-green',  txt: 'Ativo' };
+function diasParaVencer(data) {
+  const [ano, mes, dia] = String(data).slice(0, 10).split('-').map(Number);
+  const hoje = new Date();
+  // Compara dias de calendário, evitando diferenças de horário/fuso e horário de verão.
+  return Math.round((Date.UTC(ano, mes - 1, dia) -
+    Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())) / 86400000);
+}
+
+function situacaoLote(lote) {
+  if (lote.status === 'DESCARTADO') return { codigo: 'DESCARTADO', cls: 'badge badge-gray', txt: 'Descartado' };
+  const dias = diasParaVencer(lote.data_venci);
+  if (lote.status === 'VENCIDO' || dias < 0) return { codigo: 'VENCIDO', cls: 'badge badge-red', txt: 'Vencido' };
+  if (dias <= 7) return { codigo: 'CRITICO', cls: 'badge badge-red', txt: 'Crítico' };
+  if (dias <= 30) return { codigo: 'AVISO', cls: 'badge badge-yellow', txt: 'Aviso' };
+  return { codigo: 'ATIVO', cls: 'badge badge-green', txt: 'Ativo' };
 }
 
 export default function Lotes() {
@@ -18,13 +27,19 @@ export default function Lotes() {
   const [editId, setEditId]     = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [filtroMed, setFiltroMed] = useState('todos');
+  const [filtroStatus, setFiltroStatus] = useState('todos');
+  const [processandoId, setProcessandoId] = useState(null);
 
   const lotesFiltrados = useMemo(() => {
-    const base = filtroMed === 'todos' ? data.lotes : data.lotes.filter(l => l.id_medicamento === filtroMed);
+    const base = data.lotes.filter(l =>
+      (filtroMed === 'todos' || l.id_medicamento === filtroMed) &&
+      (filtroStatus === 'todos' || situacaoLote(l).codigo === filtroStatus)
+    );
     return [...base].sort((a, b) => new Date(a.data_venci).getTime() - new Date(b.data_venci).getTime());
-  }, [data.lotes, filtroMed]);
+  }, [data.lotes, filtroMed, filtroStatus]);
 
   const abrirEditar = (l) => {
+    if (l.status === 'DESCARTADO') return;
     setForm({ id_medicamento: l.id_medicamento, numero_lote: l.numero_lote, data_fabri: l.data_fabri?.slice(0, 10) ?? '', data_venci: l.data_venci.slice(0, 10), quantidade: l.quantidade, preco_compra: l.preco_compra, preco_venda: l.preco_venda });
     setEditId(l.id_lote);
     setShowForm(true);
@@ -36,10 +51,39 @@ export default function Lotes() {
     e.preventDefault();
     if (!form.id_medicamento) return alert('Selecione um medicamento');
     try {
-      if (editId) await data.atualizarLote(editId, { ...form, status: 'ATIVO' });
+      if (editId) await data.atualizarLote(editId, {
+        ...form, status: data.lotes.find(l => l.id_lote === editId)?.status || 'ATIVO',
+      });
       else        await data.adicionarLote({ ...form, status: 'ATIVO' });
       fecharForm();
-    } catch { alert('Erro ao salvar lote.'); }
+    } catch (err) { alert(err?.response?.data?.error || 'Erro ao salvar lote.'); }
+  };
+
+  const handleDescartar = async (lote) => {
+    const medicamento = data.getMedicamento(lote.id_medicamento);
+    if (!confirm(`Descartar o lote ${lote.numero_lote} de ${medicamento?.nome_comercial ?? 'medicamento'}? O saldo atual será zerado. O cadastro e as vendas serão preservados. Esta ação não pode ser desfeita pela edição.`)) return;
+    setProcessandoId(lote.id_lote);
+    try {
+      await data.descartarLote(lote.id_lote);
+      if (editId === lote.id_lote) fecharForm();
+    } catch (err) {
+      alert(err?.response?.data?.error || 'Erro ao descartar lote.');
+    } finally {
+      setProcessandoId(null);
+    }
+  };
+
+  const handleExcluir = async (lote) => {
+    if (!confirm(`Excluir permanentemente o cadastro do lote ${lote.numero_lote}? Para registrar descarte de estoque, utilize Descartar lote.`)) return;
+    setProcessandoId(lote.id_lote);
+    try {
+      await data.deletarLote(lote.id_lote);
+      if (editId === lote.id_lote) fecharForm();
+    } catch (err) {
+      alert(err?.response?.data?.error || 'Erro ao excluir lote.');
+    } finally {
+      setProcessandoId(null);
+    }
   };
 
   const totalValor = lotesFiltrados.reduce((t, l) => t + Number(l.quantidade) * Number(l.preco_compra), 0);
@@ -119,13 +163,25 @@ export default function Lotes() {
       {/* Filtro + stats */}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <div className="form-group" style={{ minWidth: 220 }}>
-          <label>Filtrar por medicamento</label>
-          <select className="input" value={filtroMed}
+          <label htmlFor="filtro-medicamento">Filtrar por medicamento</label>
+          <select id="filtro-medicamento" className="input" value={filtroMed}
             onChange={e => setFiltroMed(e.target.value === 'todos' ? 'todos' : Number(e.target.value))}>
             <option value="todos">Todos</option>
             {data.medicamentos.filter(m => m.ativo).sort((a, b) => a.nome_comercial.localeCompare(b.nome_comercial, 'pt-BR', { sensitivity: 'base', numeric: true }) || data.formatarMedicamento(a).localeCompare(data.formatarMedicamento(b), 'pt-BR', { sensitivity: 'base', numeric: true })).map(m => (
               <option key={m.id_medicamento} value={m.id_medicamento}>{data.formatarMedicamento(m)}</option>
             ))}
+          </select>
+        </div>
+        <div className="form-group" style={{ minWidth: 200 }}>
+          <label htmlFor="filtro-status">Filtrar por status</label>
+          <select id="filtro-status" className="input" value={filtroStatus}
+            onChange={e => setFiltroStatus(e.target.value)}>
+            <option value="todos">Todos os status</option>
+            <option value="ATIVO">Ativo (sem alerta)</option>
+            <option value="CRITICO">Crítico (até 7 dias)</option>
+            <option value="AVISO">Aviso (8 a 30 dias)</option>
+            <option value="VENCIDO">Vencido</option>
+            <option value="DESCARTADO">Descartado</option>
           </select>
         </div>
         <div className="grid-3" style={{ flex: 1 }}>
@@ -158,8 +214,7 @@ export default function Lotes() {
               {lotesFiltrados.length === 0 ? (
                 <tr><td colSpan={9} className="text-center" style={{ padding: 32, color: 'var(--text-muted)' }}>Nenhum lote encontrado.</td></tr>
               ) : lotesFiltrados.map(l => {
-                const dias = diasParaVencer(l.data_venci);
-                const s = badge(dias);
+                const s = situacaoLote(l);
                 return (
                   <tr key={l.id_lote}>
                     <td style={{ fontWeight: 600 }}>
@@ -169,7 +224,7 @@ export default function Lotes() {
                     <td>{new Date(l.data_venci).toLocaleDateString('pt-BR')}</td>
                     <td className="text-center">
                       <span className={s.cls} style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
-                        {dias <= 7 && dias >= 0 && <AlertCircle size={11} />}{s.txt}
+                        {s.codigo === 'CRITICO' && <AlertCircle size={11} />}{s.txt}
                       </span>
                     </td>
                     <td className="text-right">{l.quantidade}</td>
@@ -178,9 +233,25 @@ export default function Lotes() {
                     <td className="text-right">R$ {(Number(l.quantidade) * Number(l.preco_compra)).toFixed(2)}</td>
                     <td className="text-center">
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                        <button className="btn btn-ghost btn-icon" style={{ color: 'var(--primary)' }} onClick={() => abrirEditar(l)}><Edit2 size={15} /></button>
-                        <button className="btn btn-ghost btn-icon" style={{ color: 'var(--danger)' }}
-                          onClick={() => confirm('Remover este lote?') && data.deletarLote(l.id_lote)}><Trash2 size={15} /></button>
+                        <button type="button" className="btn btn-ghost btn-icon"
+                          style={{ color: 'var(--primary)' }} onClick={() => abrirEditar(l)}
+                          disabled={processandoId !== null || l.status === 'DESCARTADO'}
+                          title="Editar lote" aria-label={`Editar lote ${l.numero_lote}`}>
+                          <Edit2 size={15} />
+                        </button>
+                        <button type="button" className="btn btn-outline btn-sm"
+                          style={{ color: 'var(--warning)' }} onClick={() => handleDescartar(l)}
+                          disabled={processandoId !== null || l.status === 'DESCARTADO'}
+                          title="Zera o estoque e preserva o cadastro"
+                          aria-label={`Descartar lote ${l.numero_lote}`}>
+                          <PackageX size={15} /> Descartar
+                        </button>
+                        <button type="button" className="btn btn-ghost btn-icon"
+                          style={{ color: 'var(--danger)' }} onClick={() => handleExcluir(l)}
+                          disabled={processandoId !== null}
+                          title="Excluir cadastro" aria-label={`Excluir cadastro do lote ${l.numero_lote}`}>
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </td>
                   </tr>
