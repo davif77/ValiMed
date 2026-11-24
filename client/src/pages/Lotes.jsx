@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Plus, Trash2, Edit2, AlertCircle, X, PackageX } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 
-const emptyForm = { id_medicamento: 0, numero_lote: '', data_fabri: '', data_venci: '', quantidade: 0, preco_compra: 0, preco_venda: 0 };
+const emptyForm = { id_medicamento: 0, numero_lote: '', data_fabri: '', data_venci: '', quantidade: 0, preco_compra: '', preco_venda: '' };
 
 function diasParaVencer(data) {
   const [ano, mes, dia] = String(data).slice(0, 10).split('-').map(Number);
@@ -40,7 +40,7 @@ export default function Lotes() {
 
   const abrirEditar = (l) => {
     if (l.status === 'DESCARTADO') return;
-    setForm({ id_medicamento: l.id_medicamento, numero_lote: l.numero_lote, data_fabri: l.data_fabri?.slice(0, 10) ?? '', data_venci: l.data_venci.slice(0, 10), quantidade: l.quantidade, preco_compra: l.preco_compra, preco_venda: l.preco_venda });
+    setForm({ id_medicamento: l.id_medicamento, numero_lote: l.numero_lote, data_fabri: l.data_fabri?.slice(0, 10) ?? '', data_venci: l.data_venci.slice(0, 10), quantidade: l.quantidade, preco_compra: String(l.preco_compra ?? ''), preco_venda: String(l.preco_venda ?? '') });
     setEditId(l.id_lote);
     setShowForm(true);
   };
@@ -50,11 +50,22 @@ export default function Lotes() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.id_medicamento) return alert('Selecione um medicamento');
+    const precos = {};
+    for (const campo of ['preco_compra', 'preco_venda']) {
+      const texto = String(form[campo] ?? '').trim();
+      const valor = texto === '' ? 0 : Number(texto.replace(',', '.'));
+      if ((texto !== '' && !/^(?:\d+(?:[.,]\d{0,2})?|[.,]\d{1,2})$/.test(texto)) ||
+          !Number.isFinite(valor) || valor < 0 || valor > 99999999.99) {
+        return alert('Informe preços entre 0 e 99999999,99, com até duas casas decimais.');
+      }
+      precos[campo] = valor;
+    }
+    const dados = { ...form, ...precos };
     try {
       if (editId) await data.atualizarLote(editId, {
-        ...form, status: data.lotes.find(l => l.id_lote === editId)?.status || 'ATIVO',
+        ...dados, status: data.lotes.find(l => l.id_lote === editId)?.status || 'ATIVO',
       });
-      else        await data.adicionarLote({ ...form, status: 'ATIVO' });
+      else        await data.adicionarLote({ ...dados, status: 'ATIVO' });
       fecharForm();
     } catch (err) { alert(err?.response?.data?.error || 'Erro ao salvar lote.'); }
   };
@@ -139,14 +150,16 @@ export default function Lotes() {
                       onChange={e => setForm({ ...form, quantidade: Number(e.target.value) })} />
                   </div>
                   <div className="form-group">
-                    <label>Preço de Compra (R$)</label>
-                    <input className="input" type="number" step="0.01" min={0} value={form.preco_compra}
-                      onChange={e => setForm({ ...form, preco_compra: Number(e.target.value) })} />
+                    <label htmlFor="preco-compra">Preço de Compra (R$)</label>
+                    <input id="preco-compra" className="input" type="text" inputMode="decimal"
+                      placeholder="0,00" value={form.preco_compra}
+                      onChange={e => setForm({ ...form, preco_compra: e.target.value })} />
                   </div>
                   <div className="form-group">
-                    <label>Preço de Venda (R$)</label>
-                    <input className="input" type="number" step="0.01" min={0} value={form.preco_venda}
-                      onChange={e => setForm({ ...form, preco_venda: Number(e.target.value) })} />
+                    <label htmlFor="preco-venda">Preço de Venda (R$)</label>
+                    <input id="preco-venda" className="input" type="text" inputMode="decimal"
+                      placeholder="0,00" value={form.preco_venda}
+                      onChange={e => setForm({ ...form, preco_venda: e.target.value })} />
                   </div>
                 </div>
               </form>
