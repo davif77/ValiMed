@@ -5,7 +5,7 @@ Sistema de gestão de farmácia com controle de validade de medicamentos, estoqu
 ## Como rodar o ValiMed para avaliação
 
 1. **Baixe o código** com Git ou pelo menu **Code → Download ZIP**. Veja [como baixar o projeto](#1-baixar-o-projeto).
-2. **Crie o banco e carregue os dados de teste**: com o MySQL Server em execução, abra [`server/schema.sql`](server/schema.sql) no Workbench e execute o arquivo inteiro. Ele cria `farmacia_validade` e inclui medicamentos, lotes, clientes e vendas fictícias.
+2. **Crie a estrutura do banco**: com o MySQL Server em execução, abra [`server/schema.sql`](server/schema.sql) no Workbench e execute o arquivo inteiro. Ele cria `farmacia_validade` e suas tabelas, sem inserir registros de exemplo.
 3. **Configure e inicie o sistema**: copie [`server/.env.example`](server/.env.example) para `server/.env` e preencha as credenciais locais. Siga as instruções para [iniciar o backend](#3-configurar-o-backend) e [iniciar o frontend](#4-iniciar-o-frontend).
 
 [Passo a passo completo para criar o banco no MySQL Workbench](#2-criar-o-banco-no-mysql-workbench).
@@ -72,7 +72,7 @@ Cada computador terá seu próprio banco e seu arquivo `server/.env`.
 
 ### 1. Baixar o projeto
 
-O repositório é privado. O responsável deve conceder acesso ao orientador antes da clonagem.
+O código pode ser baixado pelo botão **Code → Download ZIP** ou clonado com Git.
 
 ```bash
 git clone https://github.com/davif77/ValiMed.git
@@ -88,11 +88,11 @@ Se o Git avisar sobre alterações locais, preserve-as antes de atualizar.
 2. Em **File → Open SQL Script**, abra `server/schema.sql`.
 3. Execute o arquivo inteiro com **Ctrl + Shift + Enter**.
 4. Confira **Action Output**: não deve haver erros. Atualize o painel **Schemas**.
-5. Confira as tabelas e os dados de demonstração no banco `farmacia_validade`.
+5. Confira as cinco tabelas no banco `farmacia_validade`. Em uma instalação nova, elas estarão vazias.
 
 | Arquivo | Finalidade |
 |---|---|
-| `server/schema.sql` | Cria o banco e as cinco tabelas e insere 15 medicamentos, 10 clientes, 45 lotes e 10 vendas fictícias |
+| `server/schema.sql` | Cria somente o banco e as cinco tabelas, sem dados de demonstração |
 | `server/.env.example` | Modelo para configurar o banco e o login local |
 
 O schema não apaga bancos, tabelas nem registros. Pode ser reexecutado em uma instalação
@@ -101,18 +101,16 @@ Se um banco anterior usa `principio_ativo` e não possui `qtd_caixa`, importar o
 não corrige essa diferença: faça backup e ajuste a estrutura antes de usar a aplicação.
 Para uma instalação nova, use um banco vazio.
 
-Os dados de demonstração usam datas relativas ao dia da primeira execução. Inclui lotes vencidos,
-descartados, próximos do vencimento, com vencimento hoje, validade longa,
-estoque zerado e estoque baixo. As quantidades representam o saldo após as vendas
-demonstrativas; não execute outra baixa de estoque para essas vendas.
-A classificação visual depende das regras da aplicação.
+### Controle dos registros
 
-A carga de demonstração é transacional. Se ocorrer erro, suas inserções são revertidas.
-Se já existir qualquer medicamento com código `VALIMED-DEMO-`, a carga inteira é
-ignorada: as vendas não são duplicadas, os estoques não são repostos e as datas não são renovadas.
-Os códigos, CPFs, fabricantes, preços e demais cadastros são fictícios.
-Execute o script inteiro, sem selecionar apenas trechos. A carga usa um procedimento auxiliar
-e requer a permissão `CREATE ROUTINE`, normalmente disponível ao usuário root local.
+Iniciar o frontend ou o backend **não insere registros de demonstração**.
+O carregamento inicial apenas consulta os dados já existentes no MySQL.
+O arquivo `server/schema.sql` também não contém INSERTs e não é executado automaticamente.
+
+Os registros entram no banco por cadastros/vendas realizados na interface ou por SQL
+executado manualmente no MySQL Workbench. Para preparar testes, execute somente o
+script de INSERTs que desejar. Não há carga de demonstração incluída nesta instalação.
+Atualizar o projeto com Git não apaga dados já inseridos no MySQL.
 
 Alternativa no terminal do cliente MySQL, iniciando **na raiz do projeto**:
 
@@ -192,7 +190,7 @@ Entre com o login e a senha definidos no `.env`.
 - **Unknown database / tabelas ausentes:** execute `schema.sql` na conexão correta.
 - **Unknown column qtd_caixa:** a tabela existente está desatualizada; o schema não faz migrações.
 - **Login funciona, mas listas estão vazias:** confira `DB_NAME`, host e porta;
-  confira se `schema.sql` foi executado por inteiro e veja o terminal do backend.
+  se o banco é novo, isso é esperado. Cadastre dados pela interface ou execute seus INSERTs no Workbench.
 - **Erro ao importar:** pare a execução e confira o erro em **Action Output**.
   Não apague o banco existente para tentar corrigir sem antes fazer backup.
 
@@ -230,11 +228,11 @@ A implementação atual é uma base funcional para o login administrativo. Ela n
 | Módulo | Recursos |
 |---|---|
 | Dashboard | Estatísticas e alertas de vencimento |
-| Medicamentos | Cadastro, busca e exclusão |
-| Lotes | Controle de validade, quantidade e preços |
+| Medicamentos | Cadastro, edição, busca e exclusão |
+| Lotes | Controle de validade, quantidade e preços; descarte; filtros por medicamento e status |
 | Clientes | Cadastro, edição e exclusão |
 | Venda PDV | Catálogo, seleção de lote e carrinho |
-| Vendas | Registro manual e histórico |
+| Vendas | Histórico e indicadores das vendas realizadas no PDV |
 | Relatórios | Indicadores de vendas, estoque e validade |
 
 ## Referências
