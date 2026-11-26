@@ -79,9 +79,10 @@ export default function VendaPDV() {
     c.ativo && (c.nome.toLowerCase().includes(buscaCliente.toLowerCase()) || c.cpf.includes(buscaCliente))
   );
 
+  // Exibe lotes ativos e vencidos; descartados nunca aparecem no PDV.
   const lotesDisponiveis = useMemo(() =>
     data.lotes
-      .filter(l => l.id_medicamento === modalLotes && l.status === 'ATIVO' && l.quantidade > 0)
+      .filter(l => l.id_medicamento === modalLotes && l.status !== 'DESCARTADO' && Number(l.quantidade) > 0)
       .sort((a, b) => new Date(a.data_venci).getTime() - new Date(b.data_venci).getTime()),
     [data.lotes, modalLotes]
   );
@@ -89,7 +90,7 @@ export default function VendaPDV() {
   const total = carrinho.reduce((s, i) => s + i.quantidade * Number(i.lote.preco_venda), 0);
 
   const adicionarLote = (lote) => {
-    if (data.isLoteVencido(lote)) {
+    if (lote.status !== 'ATIVO' || data.isLoteVencido(lote)) {
       alert(`Não é possível vender este lote: venceu em ${new Date(lote.data_venci).toLocaleDateString('pt-BR')}.`);
       return;
     }
@@ -145,21 +146,29 @@ export default function VendaPDV() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
             {medicamentos.map(m => {
-              const disponiveis = data.lotes.filter(l => l.id_medicamento === m.id_medicamento && l.status === 'ATIVO' && l.quantidade > 0 && !data.isLoteVencido(l));
+              const lotesComSaldo = data.lotes.filter(l => l.id_medicamento === m.id_medicamento && l.status !== 'DESCARTADO' && Number(l.quantidade) > 0);
+              const disponiveis = lotesComSaldo.filter(l => l.status === 'ATIVO' && !data.isLoteVencido(l));
+              const vencidos = lotesComSaldo.filter(l => l.status === 'VENCIDO' || data.isLoteVencido(l));
               const qtdTotal = disponiveis.reduce((t, l) => t + Number(l.quantidade), 0);
+              const qtdVencida = vencidos.reduce((t, l) => t + Number(l.quantidade), 0);
               return (
                 <button
                   key={m.id_medicamento}
                   className="btn"
                   style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4, padding: '14px', textAlign: 'left', border: '1px solid var(--border)', background: 'white' }}
                   onClick={() => setModalLotes(m.id_medicamento)}
-                  disabled={qtdTotal === 0}
+                  disabled={lotesComSaldo.length === 0}
                 >
                   <span style={{ fontWeight: 600 }}>{m.nome_comercial}</span>
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{data.formatarMedicamento(m)}</span>
                   <span style={{ fontSize: 12, fontWeight: 600, color: qtdTotal > 0 ? 'var(--success)' : 'var(--danger)' }}>
                     {qtdTotal > 0 ? `${qtdTotal} un. disponíveis` : 'Sem estoque disponível'}
                   </span>
+                  {qtdVencida > 0 && (
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)' }}>
+                      {qtdVencida} un. vencidas — bloqueadas para venda
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -253,9 +262,9 @@ export default function VendaPDV() {
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {lotesDisponiveis.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 24 }}>Nenhum lote disponível.</p>
+                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 24 }}>Nenhum lote com saldo para exibir.</p>
               ) : lotesDisponiveis.map(l => {
-                const vencido = data.isLoteVencido(l);
+                const vencido = l.status !== 'ATIVO' || data.isLoteVencido(l);
                 return (
                   <button
                     key={l.id_lote}
@@ -266,6 +275,7 @@ export default function VendaPDV() {
                       border: vencido ? '1px solid #fca5a5' : '1px solid var(--border)',
                       cursor: vencido ? 'not-allowed' : 'pointer',
                     }}
+                    disabled={vencido}
                     onClick={() => adicionarLote(l)}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'space-between' }}>
