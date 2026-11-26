@@ -386,12 +386,18 @@ app.post('/api/vendas', async (req, res) => {
  
     // valida cada lote (estoque suficiente e não vencido) travando a linha
     for (const item of itens) {
-      const [[lote]] = await conn.query('SELECT * FROM lotes WHERE id_lote = ? FOR UPDATE', [item.lote_id]);
+      const [[lote]] = await conn.query(
+        'SELECT *, (data_venci < CURDATE()) AS vencido FROM lotes WHERE id_lote = ? FOR UPDATE',
+        [item.lote_id]
+      );
  
       if (!lote) throw new Error(`Lote ${item.lote_id} não encontrado.`);
       if (lote.status !== 'ATIVO') throw new Error(`Lote ${lote.numero_lote} não está ativo.`);
-      if (new Date(lote.data_venci) < new Date()) throw new Error(`Lote ${lote.numero_lote} está vencido e não pode ser vendido.`);
-      if (lote.quantidade < item.quantidade) throw new Error(`Estoque insuficiente para o lote ${lote.numero_lote}.`);
+      if (Number(lote.vencido) === 1) throw new Error(`Lote ${lote.numero_lote} está vencido e não pode ser vendido.`);
+      if (!Number.isInteger(Number(item.quantidade)) || Number(item.quantidade) < 1) {
+        throw new Error('A quantidade da venda deve ser um número inteiro maior que zero.');
+      }
+      if (Number(lote.quantidade) < Number(item.quantidade)) throw new Error(`Estoque insuficiente para o lote ${lote.numero_lote}.`);
     }
  
     const [vendaResult] = await conn.query(
