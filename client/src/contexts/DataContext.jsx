@@ -92,8 +92,16 @@ export function DataProvider({ children }) {
   };
 
   const isLoteVencido = (lote) => {
-    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-    return new Date(lote.data_venci) < hoje;
+    // Compara somente a data (AAAA-MM-DD), evitando diferenças de fuso
+    // que poderiam marcar como vencido um lote cuja validade é hoje.
+    const hoje = new Date();
+    const hojeISO = [
+      hoje.getFullYear(),
+      String(hoje.getMonth() + 1).padStart(2, '0'),
+      String(hoje.getDate()).padStart(2, '0'),
+    ].join('-');
+    const validadeISO = String(lote.data_venci).slice(0, 10);
+    return validadeISO < hojeISO;
   };
 
   // ── Vendas ──
